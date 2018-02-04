@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description/>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>false</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut/>
+ <show-in-menu>false</show-in-menu>
+ <group-name/>
+ <menu-path/>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text>import pya
+
+
+layout = pya.Layout()
+top = layout.create_cell("TOP")
+l1 = layout.layer(1, 0)
+
+def pellipse(x,y,a,b,npoints,layer_index):
+  # locate the Basic library
+  lib = pya.Library.library_by_name("Basic")
+  if lib == None:
+    raise Exception("Unknown lib 'Basic'")
+  
+  # locate the declaration
+  pcell_decl = lib.layout().pcell_declaration("ELLIPSE");
+  if pcell_decl == None:
+    raise Exception("Unknown PCell 'ELLIPSE'")
+  
+  
+  # create the PCell variant
+  param = { 
+    "radius_x": a/1000,
+    "radius_y": b/1000,
+    "actual_radius_x": a/1000,
+    "actual_radius_y": b/1000,
+    "npoints": npoints,
+    "layer": pya.LayerInfo(layer_index, 0) 
+  }
+  
+  pv = []
+  for p in pcell_decl.get_parameters():
+    if p.name in param:
+      pv.append(param[p.name])
+    else:
+      pv.append(p.default)
+  
+  cell_index = layout.add_pcell_variant(lib, pcell_decl.id(), pv)
+  
+  # place the PCell
+  t = pya.Trans(pya.Trans.R0, x, y)
+  top.insert(pya.CellInstArray(cell_index, t))
+  
+for i in range(10):
+  pellipse(i*20e3,0,1000,650,100,1)
+
+
+layout.write("E:\\Research\\Nanofab\\Pattern\\test.GDS")</text>
+</klayout-macro>

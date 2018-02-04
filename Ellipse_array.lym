@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description/>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>false</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut/>
+ <show-in-menu>false</show-in-menu>
+ <group-name/>
+ <menu-path/>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text>#此程序利用KLayout的Python API 实现椭圆阵列的绘制
+#使用方式：打开Klayout-&gt;Macros-&gt;Macro Development-&gt;Import file,
+#修改参数或程序，更改程序末尾文件保存路径，运行程序，
+#最后找到输出的文件使用KLayout打开即可
+
+import pya #导入KLayout Python API
+import math
+
+#定义画椭圆函数,各参数含义分别为椭圆中心横坐标、纵坐标,半长轴,半短轴，点数，layer
+def ellipse(x,y,a,b,n,layer): 
+  pts = []
+  da = math.pi * 2 / n
+  for i in range(0,n):
+    pts.append(pya.Point.from_dpoint(pya.DPoint(x+a * math.cos(i * da), y+b * math.sin(i * da))))
+  #使用多边形类画椭圆
+  top.shapes(layer).insert(pya.Polygon(pts))
+  
+def pellipse(x,y,a,b,npoints,layer_index):
+  # locate the Basic library
+  lib = pya.Library.library_by_name("Basic")
+  if lib == None:
+    raise Exception("Unknown lib 'Basic'")
+  
+  # locate the declaration
+  pcell_decl = lib.layout().pcell_declaration("ELLIPSE");
+  if pcell_decl == None:
+    raise Exception("Unknown PCell 'ELLIPSE'")
+  
+  
+  # create the PCell variant
+  param = { 
+    "radius_x": a/1000,
+    "radius_y": b/1000,
+    "actual_radius_x": a/1000,
+    "actual_radius_y": b/1000,
+    "npoints": npoints,
+    "layer": pya.LayerInfo(layer_index, 0) 
+  }
+  
+  pv = []
+  for p in pcell_decl.get_parameters():
+    if p.name in param:
+      pv.append(param[p.name])
+    else:
+      pv.append(p.default)
+  
+  cell_index = layout.add_pcell_variant(lib, pcell_decl.id(), pv)
+  
+  # place the PCell
+  t = pya.Trans(pya.Trans.R0, x, y)
+  top.insert(pya.CellInstArray(cell_index, t))
+  
+
+#新建layout、cell、layer
+layout = pya.Layout()
+top = layout.create_cell("TOP")
+l1 = layout.layer(1, 0)
+l2 = layout.layer(2, 0)
+
+a_min=500 #最小半长轴（单位:nm,下同）
+a_max=1500 #最大半长轴
+a_step=25 #半长轴变化步长
+b_min=1000 #最小半短轴
+b_max=2000 #最大半短轴   
+b_step=50 #半短轴变化步长
+
+array_m=5 #阵列横向微柱数量
+array_n=4 #阵列纵向微柱数量
+plliar_distance=20e3 #微柱间距
+array_distance=110e3 #阵列间距
+
+#ai,bi遍历微柱半长轴、半短轴变化序列
+for ai in range((a_max-a_min)//a_step):
+  for bi in range((b_max-b_min)//b_step):
+    #此循环用于画每个小阵列第一排的五个圆
+    for circle in range(5):
+      if circle&lt;3: #把五个圆分别画在两个layer上
+        layer_index=2
+      else:
+        layer_index=1
+      circle_x=ai*array_distance+circle*plliar_distance
+      circle_y=-bi*array_distance+plliar_distance
+      circle_r=4500-1000*circle #圆的尺寸序列直接写进来了
+      pellipse(circle_x, circle_y,circle_r,circle_r,100,layer_index)
+    #i,j遍历微柱参数相同的小阵列
+    for i in range(0,array_m): 
+      for j in range(0,array_n):
+        ellipse_x=ai*array_distance+i*plliar_distance
+        ellipse_y=-bi*array_distance-j*plliar_distance
+        ellipse_a=a_min+ai*a_step
+        ellipse_b=b_min+bi*b_step
+        pellipse(ellipse_x,ellipse_y,ellipse_a,ellipse_b,100,1)
+  
+#保存为.GDS文件
+layout.write("E:\\Research\\Nanofab\\Pattern\\Ellipse_array.GDS")
+
+
+
+
+</text>
+</klayout-macro>
